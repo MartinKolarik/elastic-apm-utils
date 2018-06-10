@@ -1,4 +1,45 @@
+const _ = require('lodash');
 const url = require('fast-url-parser');
+
+module.exports.apm = {
+	filter ({ keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] }) {
+		return (payload) => {
+			let items = payload.transactions || [];
+
+			items.forEach((item) => {
+				let { request, response } = item.context;
+
+				if (request) {
+					if (request.headers) {
+						if (keepRequest.length) {
+							request.headers = _.pick(request.headers, keepRequest);
+						} else {
+							delete request.headers;
+						}
+					}
+
+					if (request.socket) {
+						if (keepSocket.length) {
+							request.socket = _.pick(request.socket, keepSocket);
+						} else {
+							delete request.socket;
+						}
+					}
+				}
+
+				if (response && response.headers) {
+					if (keepResponse.length) {
+						response.headers = _.pick(response.headers, keepResponse);
+					} else {
+						delete response.headers;
+					}
+				}
+			});
+
+			return payload;
+		};
+	},
+};
 
 module.exports.express = {
 	middleware (apmClient, { setAddress = true, setOrigin = true } = {}) {
