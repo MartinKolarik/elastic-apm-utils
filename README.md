@@ -52,7 +52,7 @@ server.use(apmUtils.express.middleware(apmCient, {
 Returns a koa middleware. 
 
 ```js
-server.use(apmUtils.koa.middleware(apmCient, {
+router.use(apmUtils.koa.middleware(apmCient, {
     // a prefix for all transaction names, only used if setRouteName = true
     prefix: '',
     
