@@ -12,7 +12,7 @@ $ npm install elastic-apm-utils
 
 ### APM
 
-#### apmUtils.apm.filter({ keepRequest: [], keepResponse, keepSocket: [] })
+#### apmUtils.apm.filter({ keepRequest, keepResponse, keepSocket })
 
 Filters `request` and `response` properties.
 
