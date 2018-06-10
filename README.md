@@ -49,7 +49,7 @@ server.use(apmUtils.express.middleware(apmCient, {
 
 #### apmUtils.koa.middleware(apmClient, { prefix, setAddress, setOrigin, setRouteName })
 
-Returns an express middleware. 
+Returns a koa middleware. 
 
 ```js
 server.use(apmUtils.koa.middleware(apmCient, {
