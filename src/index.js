@@ -2,7 +2,7 @@ const _ = require('lodash');
 const url = require('fast-url-parser');
 
 module.exports.apm = {
-	filter ({ keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] }) {
+	filter ({ keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
 		return (payload) => {
 			let items = payload.transactions || [];
 
