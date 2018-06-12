@@ -7,6 +7,10 @@ module.exports.apm = {
 			let items = payload.transactions || [];
 
 			items.forEach((item) => {
+				if (!item.context) {
+					return;
+				}
+
 				let { request, response } = item.context;
 
 				if (request) {
