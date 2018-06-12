@@ -1,7 +1,7 @@
 {
 	"name": "elastic-apm-utils",
 	"description": "Utilities for Elastic APM",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"github": "https://github.com/MartinKolarik/elastic-apm-utils/",
 	"main": "./src/index.js",
 	"dependencies": {
