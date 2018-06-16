@@ -2,16 +2,22 @@ const _ = require('lodash');
 const url = require('fast-url-parser');
 
 module.exports.apm = {
-	filter ({ keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
+	filter ({ filterNotSampled = true, keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
 		return (payload) => {
-			let items = payload.transactions || [];
+			if (!Array.isArray(payload.transactions)) {
+				return payload;
+			}
 
-			items.forEach((item) => {
-				if (!item.context) {
-					return;
+			if (filterNotSampled) {
+				payload.transactions = payload.transactions.filter(transaction => transaction.sampled);
+			}
+
+			payload.transactions = payload.transactions.map((transaction) => {
+				if (!transaction.context) {
+					return transaction;
 				}
 
-				let { request, response } = item.context;
+				let { request, response } = transaction.context;
 
 				if (request) {
 					if (request.headers) {
@@ -38,6 +44,8 @@ module.exports.apm = {
 						delete response.headers;
 					}
 				}
+
+				return transaction;
 			});
 
 			return payload;

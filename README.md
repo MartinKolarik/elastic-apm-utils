@@ -18,6 +18,10 @@ Filters `request` and `response` properties.
 
 ```js
 apmClient.addFilter(apmUtils.apm.filter({
+	// completely remove non-sampled transactions
+	// (otherwise those are still to sent to APM, just with less details)
+	filterNotSampled: true,
+	
     // list of request headers to keep, optional
     keepRequest: [ 'referer', 'user-agent' ], 
 
