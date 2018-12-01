@@ -2,51 +2,43 @@ const _ = require('lodash');
 const url = require('fast-url-parser');
 
 module.exports.apm = {
-	filter ({ filterNotSampled = true, keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
+	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
 		return (payload) => {
-			if (!Array.isArray(payload.transactions)) {
+			if (filterNotSampled && !payload.sampled) {
+				return false;
+			}
+
+			if (!payload.context) {
 				return payload;
 			}
 
-			if (filterNotSampled) {
-				payload.transactions = payload.transactions.filter(transaction => transaction.sampled);
+			let { request, response } = payload.context;
+
+			if (request) {
+				if (request.headers) {
+					if (keepRequest.length) {
+						request.headers = _.pick(request.headers, keepRequest);
+					} else {
+						delete request.headers;
+					}
+				}
+
+				if (request.socket) {
+					if (keepSocket.length) {
+						request.socket = _.pick(request.socket, keepSocket);
+					} else {
+						delete request.socket;
+					}
+				}
 			}
 
-			payload.transactions = payload.transactions.map((transaction) => {
-				if (!transaction.context) {
-					return transaction;
+			if (response && response.headers) {
+				if (keepResponse.length) {
+					response.headers = _.pick(response.headers, keepResponse);
+				} else {
+					delete response.headers;
 				}
-
-				let { request, response } = transaction.context;
-
-				if (request) {
-					if (request.headers) {
-						if (keepRequest.length) {
-							request.headers = _.pick(request.headers, keepRequest);
-						} else {
-							delete request.headers;
-						}
-					}
-
-					if (request.socket) {
-						if (keepSocket.length) {
-							request.socket = _.pick(request.socket, keepSocket);
-						} else {
-							delete request.socket;
-						}
-					}
-				}
-
-				if (response && response.headers) {
-					if (keepResponse.length) {
-						response.headers = _.pick(response.headers, keepResponse);
-					} else {
-						delete response.headers;
-					}
-				}
-
-				return transaction;
-			});
+			}
 
 			return payload;
 		};
