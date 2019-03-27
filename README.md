@@ -12,12 +12,23 @@ $ npm install elastic-apm-utils
 
 ### APM
 
-#### apmUtils.apm.filter({ keepRequest, keepResponse, keepSocket })
+#### apmUtils.apm.spanFilter({ filterShorterThan })
+
+Filters spans.
+
+```js
+apmClient.addSpanFilter(apmUtils.apm.spanFilter({
+    // remove spans shorter than this value in ms
+    filterShorterThan: 10,
+}));
+```
+
+#### apmUtils.apm.addTransactionFilter({ keepRequest, keepResponse, keepSocket })
 
 Filters `request` and `response` properties.
 
 ```js
-apmClient.addFilter(apmUtils.apm.filter({
+apmClient.transactionFilter(apmUtils.apm.transactionFilter({
     // completely remove non-sampled transactions
     // (otherwise those are still sent to APM, just with less details)
     filterNotSampled: true,
