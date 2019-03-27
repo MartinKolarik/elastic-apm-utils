@@ -1,7 +1,7 @@
 {
 	"name": "elastic-apm-utils",
 	"description": "Utilities for Elastic APM",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"github": "https://github.com/MartinKolarik/elastic-apm-utils/",
 	"main": "./src/index.js",
 	"license": "MIT",
