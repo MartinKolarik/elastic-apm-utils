@@ -2,6 +2,15 @@ const _ = require('lodash');
 const url = require('fast-url-parser');
 
 module.exports.apm = {
+	spanFilter ({ filterShorterThan } = {}) {
+		return (payload) => {
+			if (filterShorterThan && payload.duration < filterShorterThan) {
+				return false;
+			}
+
+			return payload;
+		};
+	},
 	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
 		return (payload) => {
 			if (filterNotSampled && !payload.sampled) {
