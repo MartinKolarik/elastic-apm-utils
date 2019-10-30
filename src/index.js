@@ -62,7 +62,7 @@ module.exports.express = {
 
 		return (req, res, next) => {
 			if (setAddress) {
-				apmClient.setTag('address', req.ip);
+				apmClient.setLabel('address', req.ip);
 			}
 
 			if (setOrigin) {
@@ -70,7 +70,7 @@ module.exports.express = {
 
 				if (origin) {
 					let parsed = url.parse(origin);
-					apmClient.setTag('origin', `${parsed.protocol}//${parsed.host}`);
+					apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 				}
 			}
 
@@ -92,7 +92,7 @@ module.exports.koa = {
 
 		return async (ctx, next) => {
 			if (setAddress) {
-				apmClient.setTag('address', ctx.request.ip);
+				apmClient.setLabel('address', ctx.request.ip);
 			}
 
 			if (setRouteName) {
@@ -108,7 +108,7 @@ module.exports.koa = {
 
 				if (origin) {
 					let parsed = url.parse(origin);
-					apmClient.setTag('origin', `${parsed.protocol}//${parsed.host}`);
+					apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 				}
 			}
 
