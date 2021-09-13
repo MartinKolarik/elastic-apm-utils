@@ -108,7 +108,10 @@ module.exports.koa = {
 
 				if (origin) {
 					let parsed = url.parse(origin);
-					apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
+
+					if (parsed.protocol && parsed.host) {
+						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
+					}
 				}
 			}
 
