@@ -11,7 +11,7 @@ module.exports.apm = {
 			return payload;
 		};
 	},
-	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
+	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
 		return (payload) => {
 			if (filterNotSampled && !payload.sampled) {
 				return false;
