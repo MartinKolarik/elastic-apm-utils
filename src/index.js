@@ -12,7 +12,7 @@ module.exports.apm = {
 			return payload;
 		};
 	},
-	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [] } = {}) {
+	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname } = {}) {
 		return (payload) => {
 			if (filterNotSampled && !payload.sampled) {
 				return false;
@@ -39,6 +39,11 @@ module.exports.apm = {
 					} else {
 						delete request.socket;
 					}
+				}
+
+				if (overrideHostname && request.url) {
+					request.url.full = request.url.full.replace(request.url.hostname, overrideHostname);
+					request.url.hostname = overrideHostname;
 				}
 			}
 
