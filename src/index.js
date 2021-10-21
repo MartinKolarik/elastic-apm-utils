@@ -1,5 +1,6 @@
 const _ = require('lodash');
 const url = require('fast-url-parser');
+const { parseDomain, ParseResultType } = require('parse-domain');
 
 module.exports.apm = {
 	spanFilter ({ filterShorterThan } = {}) {
@@ -55,7 +56,7 @@ module.exports.apm = {
 };
 
 module.exports.express = {
-	middleware (apmClient, { setAddress = true, setOrigin = true } = {}) {
+	middleware (apmClient, { setAddress = true, setOrigin = true, requestSource = true } = {}) {
 		if (!apmClient) {
 			return (req, res, next) => next();
 		}
@@ -65,7 +66,7 @@ module.exports.express = {
 				apmClient.setLabel('address', req.ip);
 			}
 
-			if (setOrigin) {
+			if (setOrigin || requestSource) {
 				let origin = req.get('origin') || req.get('referrer');
 
 				if (origin) {
@@ -73,7 +74,17 @@ module.exports.express = {
 
 					if (parsed.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
+
+						if (requestSource) {
+							let { domain, topLevelDomains, type } = parseDomain(parsed.hostname);
+
+							if (type === ParseResultType.Listed) {
+								apmClient.setLabel('requestSource', (domain ? `${domain}.` : '') + topLevelDomains.join('.'));
+							}
+						}
 					}
+				} else if (req.get('Sec-Fetch-Mode') !== 'navigate') {
+					apmClient.setLabel('requestSource', req.get('User-Agent'));
 				}
 			}
 
@@ -88,7 +99,7 @@ module.exports.koa = {
 			router.get(route[0], route[1], fn);
 		});
 	},
-	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, setRouteName = true } = {}) {
+	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true } = {}) {
 		if (!apmClient) {
 			return async (ctx, next) => next();
 		}
@@ -106,7 +117,7 @@ module.exports.koa = {
 				}
 			}
 
-			if (setOrigin) {
+			if (setOrigin || requestSource) {
 				let origin = ctx.request.get('origin') || ctx.request.get('referrer');
 
 				if (origin) {
@@ -114,7 +125,17 @@ module.exports.koa = {
 
 					if (parsed.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
+
+						if (requestSource) {
+							let { domain, topLevelDomains, type } = parseDomain(parsed.hostname);
+
+							if (type === ParseResultType.Listed) {
+								apmClient.setLabel('requestSource', (domain ? `${domain}.` : '') + topLevelDomains.join('.'));
+							}
+						}
 					}
+				} else if (ctx.request.get('Sec-Fetch-Mode') !== 'navigate') {
+					apmClient.setLabel('requestSource', ctx.request.get('User-Agent'));
 				}
 			}
 
