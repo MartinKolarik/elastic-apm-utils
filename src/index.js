@@ -101,7 +101,7 @@ module.exports.express = {
 module.exports.koa = {
 	addRoutes (router, routes, ...fn) {
 		routes.forEach((route) => {
-			router.get(route[0], route[1], ...fn);
+			router.get(route[0], route[1] || route[0], ...fn);
 		});
 	},
 	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true } = {}) {
