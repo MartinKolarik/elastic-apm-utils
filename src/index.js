@@ -104,7 +104,7 @@ module.exports.koa = {
 			router.get(route[0], route[1] || route[0], ...fn);
 		});
 	},
-	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true } = {}) {
+	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true, usePathBasedRoutes = true } = {}) {
 		if (!apmClient) {
 			return async (ctx, next) => next();
 		}
@@ -119,6 +119,9 @@ module.exports.koa = {
 
 				if (matched) {
 					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${matched.name}`);
+				} else if (usePathBasedRoutes) {
+					let name = ctx.url.split('/').slice(0, 2).join('/');
+					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${name}`);
 				}
 			}
 
