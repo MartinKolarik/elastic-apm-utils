@@ -115,7 +115,7 @@ module.exports.koa = {
 			}
 
 			if (setRouteName) {
-				let matched = ctx.matched.find(r => r.name);
+				let matched = ctx.matched?.find(r => r.name);
 
 				if (matched) {
 					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${matched.name}`);
