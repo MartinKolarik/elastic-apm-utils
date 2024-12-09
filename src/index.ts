@@ -1,28 +1,33 @@
-const _ = require('lodash');
-const url = require('fast-url-parser');
-const { parseDomain, ParseResultType } = require('parse-domain');
+import _ from 'lodash';
+// @ts-expect-error no types here
+import url from 'fast-url-parser';
+import { Handler } from 'express';
+import KoaRouter from '@koa/router';
+import { parseDomain, ParseResultType } from 'parse-domain';
+import { Agent, FilterFn } from 'elastic-apm-node';
+import { Middleware } from 'koa';
 
-module.exports.apm = {
-	spanFilter ({ filterShorterThan } = {}) {
+export const apm = {
+	spanFilter ({ filterShorterThan = 0 } = {}): FilterFn {
 		return (payload) => {
-			if (filterShorterThan && payload.duration < filterShorterThan) {
+			if (filterShorterThan && payload['duration'] < filterShorterThan) {
 				return false;
 			}
 
 			return payload;
 		};
 	},
-	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname } = {}) {
+	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname = '' } = {}): FilterFn {
 		return (payload) => {
-			if (filterNotSampled && !payload.sampled) {
+			if (filterNotSampled && !payload['sampled']) {
 				return false;
 			}
 
-			if (!payload.context) {
+			if (!payload['context']) {
 				return payload;
 			}
 
-			let { request, response } = payload.context;
+			const { request, response } = payload['context'];
 
 			if (request) {
 				if (request.headers) {
@@ -60,31 +65,31 @@ module.exports.apm = {
 	},
 };
 
-module.exports.express = {
-	middleware (apmClient, { setAddress = true, setOrigin = true, requestSource = true } = {}) {
+export const express = {
+	middleware (apmClient: Agent, { setAddress = true, setOrigin = true, requestSource = true } = {}): Handler {
 		if (!apmClient) {
-			return (req, res, next) => next();
+			return (_req, _res, next) => next();
 		}
 
-		return (req, res, next) => {
+		return (req, _res, next) => {
 			if (setAddress) {
 				apmClient.setLabel('address', req.ip);
 			}
 
 			if (setOrigin || requestSource) {
-				let origin = req.get('origin') || req.get('referrer');
+				const origin = req.get('origin') || req.get('referrer');
 
 				if (origin) {
-					let parsed = url.parse(origin);
+					const parsed = url.parse(origin);
 
 					if (parsed.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 
 						if (requestSource) {
-							let { domain, topLevelDomains, type } = parseDomain(parsed.hostname);
+							const result = parseDomain(parsed.hostname);
 
-							if (type === ParseResultType.Listed) {
-								apmClient.setLabel('requestSource', (domain ? `${domain}.` : '') + topLevelDomains.join('.'));
+							if (result.type === ParseResultType.Listed) {
+								apmClient.setLabel('requestSource', (result.domain ? `${result.domain}.` : '') + result.topLevelDomains.join('.'));
 							}
 						}
 					}
@@ -98,15 +103,15 @@ module.exports.express = {
 	},
 };
 
-module.exports.koa = {
-	addRoutes (router, routes, ...fn) {
+export const koa = {
+	addRoutes (router: KoaRouter, routes: [ string, string? ][], ...fn: KoaRouter.Middleware[]) {
 		routes.forEach((route) => {
 			router.get(route[0], route[1] || route[0], ...fn);
 		});
 	},
-	middleware (apmClient, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true, usePathBasedRoutes = true } = {}) {
+	middleware (apmClient: Agent, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true, usePathBasedRoutes = true } = {}): Middleware {
 		if (!apmClient) {
-			return async (ctx, next) => next();
+			return async (_ctx, next) => next();
 		}
 
 		return async (ctx, next) => {
@@ -115,30 +120,30 @@ module.exports.koa = {
 			}
 
 			if (setRouteName) {
-				let matched = ctx.matched?.find(r => r.name);
+				const matched = ctx['matched']?.find((r: { name: string }) => r.name);
 
 				if (matched) {
 					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${matched.name}`);
 				} else if (usePathBasedRoutes) {
-					let name = ctx.url.split('/').slice(0, 2).join('/');
+					const name = ctx.url.split('/').slice(0, 2).join('/');
 					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${name}`);
 				}
 			}
 
 			if (setOrigin || requestSource) {
-				let origin = ctx.request.get('origin') || ctx.request.get('referrer');
+				const origin = ctx.request.get('origin') || ctx.request.get('referrer');
 
 				if (origin) {
-					let parsed = url.parse(origin);
+					const parsed = url.parse(origin);
 
 					if (parsed.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 
 						if (requestSource) {
-							let { domain, topLevelDomains, type } = parseDomain(parsed.hostname);
+							const result = parseDomain(parsed.hostname);
 
-							if (type === ParseResultType.Listed) {
-								apmClient.setLabel('requestSource', (domain ? `${domain}.` : '') + topLevelDomains.join('.'));
+							if (result.type === ParseResultType.Listed) {
+								apmClient.setLabel('requestSource', (result.domain ? `${result.domain}.` : '') + result.topLevelDomains.join('.'));
 							}
 						}
 					}

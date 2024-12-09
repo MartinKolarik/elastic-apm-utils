@@ -1,3 +1,3 @@
 {
-	"extends": "@martin-kolarik/eslint-config"
+	"extends": "@martin-kolarik/eslint-config/typescript"
 }
