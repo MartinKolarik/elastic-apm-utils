@@ -7,8 +7,35 @@ import { parseDomain, ParseResultType } from 'parse-domain';
 import { Agent, FilterFn } from 'elastic-apm-node';
 import { Middleware } from 'koa';
 
+type SpanFilterParams = {
+	filterShorterThan?: number;
+};
+
+type TransactionFilterParams = {
+	filterNotSampled?: boolean;
+	keepRequest?: string[];
+	keepResponse?: string[];
+	keepSocket?: string[];
+	overrideHostname?: string;
+};
+
+type ExpressMiddlewareParams = {
+	setAddress?: boolean;
+	setOrigin?: boolean;
+	requestSource?: boolean;
+};
+
+type KoaMiddlewareParams = {
+	prefix?: string;
+	setAddress?: boolean;
+	setOrigin?: boolean;
+	requestSource?: boolean;
+	setRouteName?: boolean;
+	usePathBasedRoutes?: boolean;
+};
+
 export const apm = {
-	spanFilter ({ filterShorterThan = 0 } = {}): FilterFn {
+	spanFilter ({ filterShorterThan = 0 }: SpanFilterParams = {}): FilterFn {
 		return (payload) => {
 			if (filterShorterThan && payload['duration'] < filterShorterThan) {
 				return false;
@@ -17,7 +44,7 @@ export const apm = {
 			return payload;
 		};
 	},
-	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname = '' } = {}): FilterFn {
+	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname = '' }: TransactionFilterParams = {}): FilterFn {
 		return (payload) => {
 			if (filterNotSampled && !payload['sampled']) {
 				return false;
@@ -66,7 +93,7 @@ export const apm = {
 };
 
 export const express = {
-	middleware (apmClient: Agent, { setAddress = true, setOrigin = true, requestSource = true } = {}): Handler {
+	middleware (apmClient: Agent, { setAddress = true, setOrigin = true, requestSource = true }: ExpressMiddlewareParams = {}): Handler {
 		if (!apmClient) {
 			return (_req, _res, next) => next();
 		}
@@ -109,7 +136,7 @@ export const koa = {
 			router.get(route[0], route[1] || route[0], ...fn);
 		});
 	},
-	middleware (apmClient: Agent, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true, usePathBasedRoutes = true } = {}): Middleware {
+	middleware (apmClient: Agent, { prefix = '', setAddress = true, setOrigin = true, requestSource = true, setRouteName = true, usePathBasedRoutes = true }: KoaMiddlewareParams = {}): Middleware {
 		if (!apmClient) {
 			return async (_ctx, next) => next();
 		}
