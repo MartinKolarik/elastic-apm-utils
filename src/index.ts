@@ -34,7 +34,29 @@ type KoaMiddlewareParams = {
 	usePathBasedRoutes?: boolean;
 };
 
+const keepRequestHeaders = [
+	'origin',
+	'referer',
+	'user-agent',
+
+	// Based on https://github.com/pbojinov/request-ip
+	'x-client-ip',
+	'x-forwarded-for',
+	'cf-connecting-ip',
+	'fastly-client-ip',
+	'true-client-ip',
+	'x-real-ip',
+	'x-cluster-client-ip',
+	'x-forwarded',
+	'forwarded-for',
+	'forwarded',
+	'x-appengine-user-ip',
+];
+
 export const apm = {
+	defaults: {
+		keepRequestHeaders,
+	},
 	spanFilter ({ filterShorterThan = 0 }: SpanFilterParams = {}): FilterFn {
 		return (payload) => {
 			if (filterShorterThan && payload['duration'] < filterShorterThan) {
@@ -44,7 +66,7 @@ export const apm = {
 			return payload;
 		};
 	},
-	transactionFilter ({ filterNotSampled = true, keepRequest = [ 'origin', 'referer', 'user-agent' ], keepResponse = [], keepSocket = [], overrideHostname = '' }: TransactionFilterParams = {}): FilterFn {
+	transactionFilter ({ filterNotSampled = true, keepRequest = keepRequestHeaders, keepResponse = [], keepSocket = [], overrideHostname = '' }: TransactionFilterParams = {}): FilterFn {
 		return (payload) => {
 			if (filterNotSampled && !payload['sampled']) {
 				return false;
