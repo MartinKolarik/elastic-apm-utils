@@ -173,9 +173,6 @@ export const koa = {
 
 				if (matched) {
 					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${matched.name}`);
-				} else if (usePathBasedRoutes) {
-					const name = ctx.url.split('/').slice(0, 2).join('/');
-					apmClient.setTransactionName(`${ctx.request.method} ${prefix}${name}`);
 				}
 			}
 
@@ -201,7 +198,12 @@ export const koa = {
 				}
 			}
 
-			return next();
+			await next();
+
+			if (setRouteName && usePathBasedRoutes && ctx.status !== 404 && apmClient.currentTransaction?.name.includes('unknown route')) {
+				const name = ctx.url.split('/').slice(0, 2).join('/');
+				apmClient.setTransactionName(`${ctx.request.method} ${prefix}${name}`);
+			}
 		};
 	},
 };
