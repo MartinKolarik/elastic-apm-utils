@@ -1,4 +1,6 @@
 import _ from 'lodash';
+import ip from 'ipaddr.js';
+import * as net from 'node:net';
 // @ts-expect-error no types here
 import url from 'fast-url-parser';
 import { Handler } from 'express';
@@ -123,6 +125,14 @@ export const express = {
 		return (req, _res, next) => {
 			if (setAddress) {
 				apmClient.setLabel('address', req.ip);
+
+				if (req.ip && net.isIPv6(req.ip)) {
+					apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${req.ip}/64`).toString());
+					apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${req.ip}/48`).toString());
+				} else {
+					apmClient.setLabel('address64', req.ip);
+					apmClient.setLabel('address48', req.ip);
+				}
 			}
 
 			if (setOrigin || requestSource) {
@@ -166,6 +176,14 @@ export const koa = {
 		return async (ctx, next) => {
 			if (setAddress) {
 				apmClient.setLabel('address', ctx.request.ip);
+
+				if (ctx.request.ip && net.isIPv6(ctx.request.ip)) {
+					apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${ctx.request.ip}/64`).toString());
+					apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${ctx.request.ip}/48`).toString());
+				} else {
+					apmClient.setLabel('address64', ctx.request.ip);
+					apmClient.setLabel('address48', ctx.request.ip);
+				}
 			}
 
 			if (setRouteName) {
