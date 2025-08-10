@@ -55,6 +55,8 @@ const keepRequestHeaders = [
 	'x-appengine-user-ip',
 ];
 
+const ipv4MappedPattern = /^::ffff:/i;
+
 export const apm = {
 	defaults: {
 		keepRequestHeaders,
@@ -127,7 +129,7 @@ export const express = {
 				apmClient.setLabel('address', req.ip);
 
 				if (req.ip && net.isIPv6(req.ip)) {
-					if (req.ip.startsWith('::ffff:')) {
+					if (ipv4MappedPattern.test(req.ip)) {
 						apmClient.setLabel('address64', req.ip.slice(7));
 						apmClient.setLabel('address48', req.ip.slice(7));
 					} else {
@@ -183,7 +185,7 @@ export const koa = {
 				apmClient.setLabel('address', ctx.request.ip);
 
 				if (ctx.request.ip && net.isIPv6(ctx.request.ip)) {
-					if (ctx.request.ip.startsWith('::ffff:')) {
+					if (ipv4MappedPattern.test(ctx.request.ip)) {
 						apmClient.setLabel('address64', ctx.request.ip.slice(7));
 						apmClient.setLabel('address48', ctx.request.ip.slice(7));
 					} else {
