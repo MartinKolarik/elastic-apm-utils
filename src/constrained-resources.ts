@@ -5,6 +5,7 @@ const originalTotalmem = os.totalmem;
 const originalFreemem = os.freemem;
 let patched = false;
 let cgroupCpuState: { time: bigint; usage: bigint } | undefined;
+let cgroupPaths: Map<string, string> | undefined;
 
 function readFile (path: string): string | undefined {
 	try {
@@ -14,8 +15,96 @@ function readFile (path: string): string | undefined {
 	}
 }
 
-function readNumber (path: string): number | undefined {
-	const value = readFile(path);
+function getCgroupPaths () {
+	if (cgroupPaths) {
+		return cgroupPaths;
+	}
+
+	cgroupPaths = new Map();
+
+	for (const line of readFile('/proc/self/cgroup')?.split('\n') || []) {
+		const parts = line.split(':');
+		const controllers = parts[1];
+		const cgroupPath = normalizeCgroupPath(parts[2]);
+
+		if (cgroupPath === undefined) {
+			continue;
+		}
+
+		if (!controllers) {
+			cgroupPaths.set('', cgroupPath);
+			continue;
+		}
+
+		for (const controller of controllers.split(',')) {
+			cgroupPaths.set(controller, cgroupPath);
+		}
+	}
+
+	return cgroupPaths;
+}
+
+function normalizeCgroupPath (cgroupPath: string | undefined) {
+	if (cgroupPath === undefined) {
+		return;
+	}
+
+	return cgroupPath
+		.split('/')
+		.filter(part => part && part !== '.' && part !== '..')
+		.join('/');
+}
+
+function getCgroupControllerPaths (controller: string) {
+	const paths = getCgroupPaths();
+	const controllerPath = paths.get(controller);
+	const unifiedPath = paths.get('');
+	const mountNames = getCgroupMountNames(controller);
+	const candidates: string[] = [];
+
+	for (const mountName of mountNames) {
+		if (controllerPath) {
+			candidates.push(`/sys/fs/cgroup/${mountName}/${controllerPath}`);
+		}
+
+		candidates.push(`/sys/fs/cgroup/${mountName}`);
+	}
+
+	if (unifiedPath) {
+		candidates.push(`/sys/fs/cgroup/${unifiedPath}`);
+	}
+
+	candidates.push('/sys/fs/cgroup');
+
+	return [ ...new Set(candidates) ];
+}
+
+function getCgroupMountNames (controller: string) {
+	if (controller === 'cpu') {
+		return [ 'cpu', 'cpu,cpuacct' ];
+	}
+
+	if (controller === 'cpuacct') {
+		return [ 'cpuacct', 'cpu,cpuacct' ];
+	}
+
+	return [ controller ];
+}
+
+function readCgroupFile (controller: string, file: string): string | undefined {
+	for (const controllerPath of getCgroupControllerPaths(controller)) {
+		const value = readFile(`${controllerPath}/${file}`);
+
+		if (value !== undefined) {
+			return value;
+		}
+	}
+
+	return undefined;
+}
+
+function readCgroupNumber (controller: string, file: string): number | undefined {
+	const value = readCgroupFile(controller, file);
 
 	if (!value) {
 		return undefined;
@@ -57,7 +146,7 @@ function parseCpuSet (cpus: string | undefined): number | undefined {
 }
 
 function getCgroupCpuQuota (): number | undefined {
-	const cpuMax = readFile('/sys/fs/cgroup/cpu.max');
+	const cpuMax = readCgroupFile('', 'cpu.max');
 
 	if (cpuMax) {
 		const parts = cpuMax.split(/\s+/);
@@ -74,8 +163,8 @@ function getCgroupCpuQuota (): number | undefined {
 		}
 	}
 
-	const quota = readNumber('/sys/fs/cgroup/cpu/cpu.cfs_quota_us');
-	const period = readNumber('/sys/fs/cgroup/cpu/cpu.cfs_period_us');
+	const quota = readCgroupNumber('cpu', 'cpu.cfs_quota_us');
+	const period = readCgroupNumber('cpu', 'cpu.cfs_period_us');
 
 	if (quota && period && quota > 0 && period > 0) {
 		return quota / period;
@@ -85,9 +174,10 @@ function getCgroupCpuQuota (): number | undefined {
 }
 
 function getCgroupCpuSetLimit (): number | undefined {
-	return parseCpuSet(readFile('/sys/fs/cgroup/cpuset.cpus.effective'))
-		|| parseCpuSet(readFile('/sys/fs/cgroup/cpuset.cpus'))
-		|| parseCpuSet(readFile('/sys/fs/cgroup/cpuset/cpuset.cpus'))
+	return parseCpuSet(readCgroupFile('', 'cpuset.cpus.effective'))
+		|| parseCpuSet(readCgroupFile('cpuset', 'cpuset.cpus.effective'))
+		|| parseCpuSet(readCgroupFile('', 'cpuset.cpus'))
+		|| parseCpuSet(readCgroupFile('cpuset', 'cpuset.cpus'))
 		|| os.availableParallelism?.();
 }
 
@@ -114,7 +204,7 @@ function getConstrainedCpuLimit (): { limit: number; hostCpuCount: number } | un
 }
 
 function getCgroupCpuUsage (): bigint | undefined {
-	const cpuStat = readFile('/sys/fs/cgroup/cpu.stat');
+	const cpuStat = readCgroupFile('', 'cpu.stat') || readCgroupFile('cpu', 'cpu.stat');
 	const usageUsecMatch = cpuStat?.match(/^usage_usec\s+(\d+)$/m);
 	const usageUsec = usageUsecMatch?.[1];
 
@@ -122,7 +212,7 @@ function getCgroupCpuUsage (): bigint | undefined {
 		return BigInt(usageUsec) * 1000n;
 	}
 
-	const usage = readFile('/sys/fs/cgroup/cpuacct/cpuacct.usage');
+	const usage = readCgroupFile('cpuacct', 'cpuacct.usage');
 
 	if (usage && /^\d+$/.test(usage)) {
 		return BigInt(usage);
