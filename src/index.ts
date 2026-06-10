@@ -83,6 +83,11 @@ export const apm = {
 			return;
 		}
 
+		if (typeof process.availableMemory !== 'function' || typeof process.constrainedMemory !== 'function') {
+			constrainedMemoryPatched = true;
+			return;
+		}
+
 		os.totalmem = () => getConstrainedMemoryStats()?.total || originalTotalmem();
 		os.freemem = () => getConstrainedMemoryStats()?.free || originalFreemem();
 
