@@ -189,7 +189,7 @@ export const express = {
 					}
 				} else {
 					apmClient.setLabel('address64', req.ip);
-					apmClient.setLabel('address48', req.ip);
+					apmClient.setLabel('address48', ip.IPv4.networkAddressFromCIDR(`${req.ip}/24`).toString());
 				}
 			}
 
@@ -245,7 +245,7 @@ export const koa = {
 					}
 				} else {
 					apmClient.setLabel('address64', ctx.request.ip);
-					apmClient.setLabel('address48', ctx.request.ip);
+					apmClient.setLabel('address48', ip.IPv4.networkAddressFromCIDR(`${ctx.request.ip}/24`).toString());
 				}
 			}
 
