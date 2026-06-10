@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import ip from 'ipaddr.js';
 import * as net from 'node:net';
+import os from 'node:os';
 // @ts-expect-error no types here
 import url from 'fast-url-parser';
 import { Handler } from 'express';
@@ -56,10 +57,60 @@ const keepRequestHeaders = [
 ];
 
 const ipv4MappedPattern = /^::ffff:/i;
+const originalTotalmem = os.totalmem;
+const originalFreemem = os.freemem;
+let constrainedMemoryPatched = false;
+
+function getConstrainedMemoryStats () {
+	const total = process.constrainedMemory();
+
+	if (!total) {
+		return;
+	}
+
+	return {
+		total,
+		free: Math.min(process.availableMemory(), total),
+	};
+}
 
 export const apm = {
 	defaults: {
 		keepRequestHeaders,
+	},
+	useConstrainedMemory (): void {
+		if (constrainedMemoryPatched) {
+			return;
+		}
+
+		os.totalmem = () => getConstrainedMemoryStats()?.total || originalTotalmem();
+		os.freemem = () => getConstrainedMemoryStats()?.free || originalFreemem();
+
+		let Stats;
+
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			Stats = require('elastic-apm-node/lib/metrics/platforms/linux/stats');
+		} catch {
+			constrainedMemoryPatched = true;
+			return;
+		}
+
+		const originalReadStats = Stats.prototype.readStats;
+
+		Stats.prototype.readStats = function (...args: unknown[]) {
+			const stats = originalReadStats.apply(this, args);
+			const memory = getConstrainedMemoryStats();
+
+			if (memory) {
+				stats.memTotal = memory.total;
+				stats.memAvailable = memory.free;
+			}
+
+			return stats;
+		};
+
+		constrainedMemoryPatched = true;
 	},
 	spanFilter ({ filterShorterThan = 0 }: SpanFilterParams = {}): FilterFn {
 		return (payload) => {

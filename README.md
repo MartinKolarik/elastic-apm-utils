@@ -12,6 +12,18 @@ $ npm install elastic-apm-utils
 
 ### APM
 
+#### apmUtils.apm.useConstrainedMemory()
+
+Makes APM system memory metrics use Node.js process memory constraints when available.
+
+```js
+const apmClient = require('elastic-apm-node');
+const apmUtils = require('elastic-apm-utils');
+
+apmUtils.apm.useConstrainedMemory();
+apmClient.start({});
+```
+
 #### apmUtils.apm.spanFilter({ filterShorterThan })
 
 Filters spans.
