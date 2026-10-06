@@ -58,6 +58,18 @@ const keepRequestHeaders = [
 
 const ipv4MappedPattern = /^::ffff:/i;
 
+function parseOrigin (origin: string) {
+	try {
+		return url.parse(origin);
+	} catch (error) {
+		if (error instanceof URIError) {
+			return;
+		}
+
+		throw error;
+	}
+}
+
 export const apm = {
 	defaults: {
 		keepRequestHeaders,
@@ -136,14 +148,16 @@ export const express = {
 				apmClient.setLabel('address', req.ip);
 
 				if (req.ip && net.isIPv6(req.ip)) {
-					if (ipv4MappedPattern.test(req.ip)) {
-						apmClient.setLabel('address64', req.ip.slice(7));
-						apmClient.setLabel('address48', req.ip.slice(7));
+					const address = req.ip.replace(/%.*/, '');
+
+					if (ipv4MappedPattern.test(address)) {
+						apmClient.setLabel('address64', address.slice(7));
+						apmClient.setLabel('address48', address.slice(7));
 					} else {
-						apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${req.ip}/64`).toString());
-						apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${req.ip}/48`).toString());
+						apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${address}/64`).toString());
+						apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${address}/48`).toString());
 					}
-				} else if (req.ip) {
+				} else if (req.ip && net.isIPv4(req.ip)) {
 					apmClient.setLabel('address64', req.ip);
 					apmClient.setLabel('address48', ip.IPv4.networkAddressFromCIDR(`${req.ip}/24`).toString());
 				}
@@ -153,9 +167,9 @@ export const express = {
 				const origin = req.get('origin') || req.get('referrer');
 
 				if (origin) {
-					const parsed = url.parse(origin);
+					const parsed = parseOrigin(origin);
 
-					if (parsed.protocol && parsed.host) {
+					if (parsed?.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 
 						if (requestSource) {
@@ -192,14 +206,16 @@ export const koa = {
 				apmClient.setLabel('address', ctx.request.ip);
 
 				if (ctx.request.ip && net.isIPv6(ctx.request.ip)) {
-					if (ipv4MappedPattern.test(ctx.request.ip)) {
-						apmClient.setLabel('address64', ctx.request.ip.slice(7));
-						apmClient.setLabel('address48', ctx.request.ip.slice(7));
+					const address = ctx.request.ip.replace(/%.*/, '');
+
+					if (ipv4MappedPattern.test(address)) {
+						apmClient.setLabel('address64', address.slice(7));
+						apmClient.setLabel('address48', address.slice(7));
 					} else {
-						apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${ctx.request.ip}/64`).toString());
-						apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${ctx.request.ip}/48`).toString());
+						apmClient.setLabel('address64', ip.IPv6.networkAddressFromCIDR(`${address}/64`).toString());
+						apmClient.setLabel('address48', ip.IPv6.networkAddressFromCIDR(`${address}/48`).toString());
 					}
-				} else if (ctx.request.ip) {
+				} else if (ctx.request.ip && net.isIPv4(ctx.request.ip)) {
 					apmClient.setLabel('address64', ctx.request.ip);
 					apmClient.setLabel('address48', ip.IPv4.networkAddressFromCIDR(`${ctx.request.ip}/24`).toString());
 				}
@@ -217,9 +233,9 @@ export const koa = {
 				const origin = ctx.request.get('origin') || ctx.request.get('referrer');
 
 				if (origin) {
-					const parsed = url.parse(origin);
+					const parsed = parseOrigin(origin);
 
-					if (parsed.protocol && parsed.host) {
+					if (parsed?.protocol && parsed.host) {
 						apmClient.setLabel('origin', `${parsed.protocol}//${parsed.host}`);
 
 						if (requestSource) {
